@@ -35,7 +35,7 @@ def parse_args():
 
 def main(args):
     """HYPER PARAMETER"""
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    os.environ["CUDA_VISIBLE_DEVICES"] = "6,7"
 
     '''CREATE DIR'''
     experiment_dir = Path('./experiment/')
@@ -112,10 +112,10 @@ def main(args):
         logger.info('Epoch %d (%d/%s):', global_epoch + 1, epoch + 1, args.epoch)
         mean_correct = []
 
-        scheduler.step()
+        # scheduler.step()
         for batch_id, data in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
             points, target = data
-            print(points.shape, target.shape)
+            # print('points shape and the target shape', points.shape, target.shape)
             points = points.data.numpy()
             jittered_data = provider.random_scale_point_cloud(points[:, :, 0:3], scale_low=2.0 / 3, scale_high=3 / 2.0)
             jittered_data = provider.shift_point_cloud(jittered_data, shift_range=0.2)
@@ -130,9 +130,10 @@ def main(args):
             optimizer.zero_grad()
 
             classifier = classifier.train()
-            pred = classifier(points[:, :3, :], points[:, 3:, :])
-            print('pred shape: ', pred.shape)
-            print('target shape: ', target.shape)
+            # print('input shape', points[:, :3, :].shape)
+            pred = classifier(points[:, :3, :], points[:, :3, :])
+            # print('pred shape: ', pred.shape)
+            # print('target shape: ', target.shape)
             loss = F.nll_loss(pred, target.long())
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.long().data).cpu().sum()
@@ -140,6 +141,7 @@ def main(args):
             loss.backward()
             optimizer.step()
             global_step += 1
+        scheduler.step()
 
         train_acc = np.mean(mean_correct)
         print('Train Accuracy: %f' % train_acc)

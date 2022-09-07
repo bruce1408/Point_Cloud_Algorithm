@@ -31,6 +31,7 @@ def show_example(x, y, x_reconstruction, y_pred,save_dir, figname):
     ax[1].set_title('Output: %d' % y_pred)
     plt.savefig(save_dir + figname + '.png')
 
+
 def save_checkpoint(epoch, train_accuracy, test_accuracy, model, optimizer, path,modelnet='checkpoint'):
     savepath  = path + '/%s-%f-%04d.pth' % (modelnet,test_accuracy, epoch)
     state = {
@@ -42,6 +43,7 @@ def save_checkpoint(epoch, train_accuracy, test_accuracy, model, optimizer, path
     }
     torch.save(state, savepath)
 
+
 def test(model, loader):
     total_correct = 0.0
     total_seen = 0.0
@@ -52,7 +54,7 @@ def test(model, loader):
         points, target = points.cuda(), target.cuda()
         classifier = model.eval()
         with torch.no_grad():
-            pred = classifier(points[:, :3, :], points[:, 3:, :])
+            pred = classifier(points[:, :3, :], points[:, :3, :])
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.long().data).cpu().sum()
         total_correct += correct.item()

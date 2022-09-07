@@ -55,7 +55,7 @@ class ModelNetDataLoader(Dataset):
         # list of (shape_name, shape_txt_file_path) tuple
         self.datapath = [(shape_names[i], os.path.join(self.root, shape_names[i], shape_ids[split][i]) + '.txt') for i
                          in range(len(shape_ids[split]))]
-        print('The size of %s data is %d'%(split,len(self.datapath)))
+        print('The size of %s data is %d' % (split, len(self.datapath)))
 
         self.cache_size = cache_size  # how many data points to cache in memory
         self.cache = {}  # from index to (point_set, cls) tuple
@@ -80,9 +80,9 @@ class ModelNetDataLoader(Dataset):
         else:
             if self.split == 'train':
                 train_idx = np.array(range(point_set.shape[0]))
-                point_set = point_set[train_idx[:self.npoints],:]
+                point_set = point_set[train_idx[:self.npoints], :]
             else:
-                point_set = point_set[0:self.npoints,:]
+                point_set = point_set[0:self.npoints, :]
 
         point_set[:, 0:3] = pc_normalize(point_set[:, 0:3])
 
@@ -98,10 +98,10 @@ class ModelNetDataLoader(Dataset):
 if __name__ == '__main__':
     import torch
 
-    data = ModelNetDataLoader('./data/modelnet40_normal_resampled/',split='train', uniform=False, normal_channel=True,)
+    data = ModelNetDataLoader('/home/cuidongdong/data/modelnet40_resample/modelnet40_normal_resampled', split='train', uniform=False, normal_channel=True,)
     DataLoader = torch.utils.data.DataLoader(data, batch_size=12, shuffle=True)
-    for point,label in DataLoader:
-        import ipdb; ipdb.set_trace()
+    for point, label in DataLoader:
+        # import ipdb; ipdb.set_trace()
         print(point.shape)
         print(label.shape)
 
