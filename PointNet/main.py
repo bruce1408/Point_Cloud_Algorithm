@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ## Introduction
-# 
 # ### In this notebook we use [PointNet](https://arxiv.org/abs/1612.00593) to perform 3D Object Classification on
 # [ModelNet40 Dataset](http://modelnet.cs.princeton.edu/#).
 
@@ -20,10 +18,11 @@ import os
 import random
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "6, 7"
 from path import Path
 from models.pointNet import PointNet
 from models.pointNetLoss import pointnetloss
@@ -91,9 +90,14 @@ valid_loader = DataLoader(dataset=valid_ds, batch_size=64)
 # <h4></h4>
 # <h4><center><a href="https://arxiv.org/pdf/1612.00593.pdf">Source: PointNet [Charles R. Qi et. al.]</a></center></h4>
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
+
 pointnet = PointNet()
-pointnet.to(device)
+if torch.cuda.device_count() > 1:
+    print("let's use", torch.cuda.device_count(), "GPUs!")
+    pointnet = nn.DataParallel(pointnet)
+
+if torch.cuda.is_available():
+    pointnet.to(device)
 
 # Load a pre-trained model if it exists
 if os.path.exists('../save.pth'):
@@ -119,6 +123,7 @@ def train(model, train_loader, val_loader=None, epochs=1):
 
             # print statistics
             running_loss += loss.item()
+            running_loss += loss.item()
             if i % 5 == 4:  # print every 5 mini-batches
                 print('[Epoch: %d, Batch: %4d / %4d], loss: %.3f' %
                       (epoch + 1, i + 1, len(train_loader), running_loss / 5))
@@ -143,10 +148,9 @@ def train(model, train_loader, val_loader=None, epochs=1):
         torch.save(pointnet.state_dict(), "save.pth")
 
 
-train(pointnet, train_loader, valid_loader, 5)
+train(pointnet, train_loader, valid_loader, 2)
 
 # ### Test PointNet
-
 pointnet.eval()
 all_preds = []
 all_labels = []
@@ -157,8 +161,8 @@ with torch.no_grad():
         inputs, labels = data['pointcloud'].to(device).float(), data['category'].to(device)
         outputs, __, __ = pointnet(inputs.transpose(1, 2))
         _, preds = torch.max(outputs.data, 1)
-        all_preds += list(preds.numpy())
-        all_labels += list(labels.numpy())
+        all_preds += list(preds.cpu().numpy())
+        all_labels += list(labels.cpu().numpy())
 
 cm = confusion_matrix(all_labels, all_preds)
 
