@@ -131,6 +131,8 @@ def main(args):
 
             classifier = classifier.train()
             pred = classifier(points[:, :3, :], points[:, 3:, :])
+            print('pred shape: ', pred.shape)
+            print('target shape: ', target.shape)
             loss = F.nll_loss(pred, target.long())
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.long().data).cpu().sum()

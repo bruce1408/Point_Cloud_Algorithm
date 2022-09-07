@@ -23,7 +23,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "6"
+os.environ["CUDA_VISIBLE_DEVICES"] = "7"
 from path import Path
 from models.pointNet import PointNet
 from models.pointNetLoss import pointnetloss
@@ -154,7 +154,7 @@ with torch.no_grad():
     for i, data in enumerate(valid_loader):
         print('Batch [%4d / %4d]' % (i + 1, len(valid_loader)))
 
-        inputs, labels = data['pointcloud'].float(), data['category']
+        inputs, labels = data['pointcloud'].to(device).float(), data['category'].to(device)
         outputs, __, __ = pointnet(inputs.transpose(1, 2))
         _, preds = torch.max(outputs.data, 1)
         all_preds += list(preds.numpy())
