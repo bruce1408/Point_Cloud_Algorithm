@@ -22,7 +22,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "6, 7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4, 5, 6, 7"
 from path import Path
 from models.pointNet import PointNet
 from models.pointNetLoss import pointnetloss
@@ -148,7 +148,7 @@ def train(model, train_loader, val_loader=None, epochs=1):
         torch.save(pointnet.state_dict(), "save.pth")
 
 
-train(pointnet, train_loader, valid_loader, 2)
+train(pointnet, train_loader, valid_loader, 30)
 
 # ### Test PointNet
 pointnet.eval()

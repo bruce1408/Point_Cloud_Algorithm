@@ -19,13 +19,14 @@ def parse_args():
     """PARAMETERS"""
     parser = argparse.ArgumentParser('PointConv')
     parser.add_argument('--batchsize', type=int, default=32, help='batch size in training')
-    parser.add_argument('--epoch', default=400, type=int, help='number of epoch in training')
+    parser.add_argument('--epoch', default=100, type=int, help='number of epoch in training')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='learning rate in training')
     parser.add_argument('--gpu', type=str, default="5", help='specify gpu device')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number [default: 1024]')
     parser.add_argument('--num_workers', type=int, default=16, help='Worker Number [default: 16]')
     parser.add_argument('--optimizer', type=str, default='SGD', help='optimizer for training')
-    parser.add_argument('--pretrain', type=str, default=None, help='whether use pretrain model')
+    # parser.add_argument('--pretrain', type=str, default=None, help='whether use pretrain model')
+    parser.add_argument('--pretrain', type=str, default="./experiment/pointconv_modelnet40_ModelNet40-2022-09-08_10-46/checkpoints/pointconv_modelnet40-0.776337-0007.pth", help='whether use pretrain model')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='decay rate of learning rate')
     parser.add_argument('--model_name', default='pointconv_modelnet40', help='model name')
     parser.add_argument('--normal', action='store_true', default=False,
@@ -149,7 +150,7 @@ def main(args):
 
         acc = test(classifier, testDataLoader)
 
-        if (acc >= best_tst_accuracy) and epoch > 5:
+        if (acc >= best_tst_accuracy) and epoch > 4:
             best_tst_accuracy = acc
             logger.info('Save model...')
             save_checkpoint(
