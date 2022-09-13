@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def normalize_data(batch_data):
     """ Normalize the batch data, use coordinates of the block centered at origin,
         Input:
