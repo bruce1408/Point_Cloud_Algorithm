@@ -1,6 +1,7 @@
 '''
 Load pointcloud/labels from the KITTI dataset folder
 '''
+import os
 import os.path
 import numpy as np
 import time
