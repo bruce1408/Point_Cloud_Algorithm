@@ -1,7 +1,7 @@
-import numpy as np
-import re
-from .kitti_data_base import *
 import os
+import re
+import numpy as np
+from .kitti_data_base import *
 
 
 class KittiDetectionDataset:
