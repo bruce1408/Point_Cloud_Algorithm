@@ -18,7 +18,6 @@ class NuscData(torch.utils.data.Dataset):
         self.is_train = is_train
         self.data_aug_conf = data_aug_conf
         self.grid_conf = grid_conf
-
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
 
@@ -48,7 +47,7 @@ class NuscData(torch.utils.data.Dataset):
 
         # adjust the image paths if needed
         if not os.path.isfile(imgname):
-            print('adjusting nuscenes file paths')
+            print('adjusting nuscenes file paths', self.nusc.dataroot)
             fs = glob(os.path.join(self.nusc.dataroot, 'samples/*/samples/CAM*/*.jpg'))
             fs += glob(os.path.join(self.nusc.dataroot, 'samples/*/samples/LIDAR_TOP/*.pcd.bin'))
             info = {}
@@ -63,21 +62,23 @@ class NuscData(torch.utils.data.Dataset):
                 if rec['channel'] == 'LIDAR_TOP' or (rec['is_key_frame'] and rec['channel'] in self.data_aug_conf['cams']):
                     rec['filename'] = info[rec['filename']]
 
-    
     def get_scenes(self):
+        print("======version", self.nusc.version)
         # filter by scene split
         split = {
             'v1.0-trainval': {True: 'train', False: 'val'},
             'v1.0-mini': {True: 'mini_train', False: 'mini_val'},
-        }[self.nusc.version][self.is_train]
+        }[self.nusc.version.split("/")[0]][self.is_train]
 
         scenes = create_splits_scenes()[split]
 
         return scenes
 
     def prepro(self):
+        print("==========", self.nusc.sample)
         samples = [samp for samp in self.nusc.sample]
 
+        print('sample is: ===========', samples)
         # remove samples that aren't in this split
         samples = [samp for samp in samples if
                    self.nusc.get('scene', samp['scene_token'])['name'] in self.scenes]
