@@ -14,8 +14,7 @@ from .tools import (ego_to_cam, get_only_in_img_mask, denormalize_img,
                     get_nusc_maps, plot_nusc_map)
 from .models import compile_model
 
-
-def lidar_check(version,
+def lidar_check(version="mini",
                 dataroot="/data/nuscenes",
                 show_lidar=True,
                 viz_train=False,
@@ -113,7 +112,7 @@ def lidar_check(version,
                 plt.savefig(imname)
 
 
-def cumsum_check(version,
+def cumsum_check(version='mini',
                 dataroot='/data/nuscenes',
                 gpuid=1,
 

@@ -127,7 +127,7 @@ def img_transform(img, post_rot, post_tran,
         img = img.transpose(method=Image.FLIP_LEFT_RIGHT)
     img = img.rotate(rotate)
 
-    # post-homography transformation
+    #
     post_rot *= resize
     post_tran -= torch.Tensor(crop[:2])
     if flip:
@@ -176,7 +176,7 @@ def gen_dx_bx(xbound, ybound, zbound):
     bx = torch.Tensor([row[0] + row[2]/2.0 for row in [xbound, ybound, zbound]])
     nx = torch.LongTensor([(row[1] - row[0]) / row[2] for row in [xbound, ybound, zbound]])
 
-    return dx, bx, nx
+    return dx, bx, nx  # dx=[0.5, 0.5, 20], bx=[-49.75, -49.75, 0], nx=[200, 200, 1]
 
 
 def cumsum_trick(x, geom_feats, ranks):

@@ -16,7 +16,7 @@ from model.pointconv import PointConvDensityClsSsg as PointConvClsSsg
 
 
 def parse_args():
-    '''PARAMETERS'''
+    """PARAMETERS"""
     parser = argparse.ArgumentParser('PointConv')
     parser.add_argument('--batchsize', type=int, default=32, help='batch size')
     parser.add_argument('--gpu', type=str, default='0', help='specify gpu device')
@@ -24,17 +24,20 @@ def parse_args():
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number [default: 1024]')
     parser.add_argument('--num_workers', type=int, default=16, help='Worker Number [default: 16]')
     parser.add_argument('--model_name', default='pointconv', help='model name')
-    parser.add_argument('--normal', action='store_true', default=False, help='Whether to use normal information [default: False]')
+    parser.add_argument('--normal', action='store_true', default=False,
+                        help='Whether to use normal information [default: False]')
     return parser.parse_args()
 
+
 def main(args):
-    '''HYPER PARAMETER'''
+    """HYPER PARAMETER"""
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     '''CREATE DIR'''
     experiment_dir = Path('./eval_experiment/')
     experiment_dir.mkdir(exist_ok=True)
-    file_dir = Path(str(experiment_dir) + '/%s_ModelNet40-'%args.model_name + str(datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')))
+    file_dir = Path(str(experiment_dir) + '/%s_ModelNet40-' % args.model_name + str(
+        datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')))
     file_dir.mkdir(exist_ok=True)
     checkpoints_dir = file_dir.joinpath('checkpoints/')
     checkpoints_dir.mkdir(exist_ok=True)
@@ -47,11 +50,12 @@ def main(args):
     logger = logging.getLogger(args.model_name)
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler = logging.FileHandler(str(log_dir) + 'eval_%s_cls.txt'%args.model_name)
+    file_handler = logging.FileHandler(str(log_dir) + 'eval_%s_cls.txt' % args.model_name)
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    logger.info('---------------------------------------------------EVAL---------------------------------------------------')
+    logger.info(
+        '---------------------------------------------------EVAL---------------------------------------------------')
     logger.info('PARAMETER ...')
     logger.info(args)
 
@@ -60,7 +64,8 @@ def main(args):
     DATA_PATH = './data/modelnet40_normal_resampled/'
 
     TEST_DATASET = ModelNetDataLoader(root=DATA_PATH, npoint=args.num_point, split='test', normal_channel=args.normal)
-    testDataLoader = torch.utils.data.DataLoader(TEST_DATASET, batch_size=args.batchsize, shuffle=False, num_workers=args.num_workers)
+    testDataLoader = torch.utils.data.DataLoader(TEST_DATASET, batch_size=args.batchsize, shuffle=False,
+                                                 num_workers=args.num_workers)
     logger.info("The number of test data is: %d", len(TEST_DATASET))
 
     seed = 3
@@ -101,13 +106,14 @@ def main(args):
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.long().data).cpu().sum()
 
-        mean_correct.append(correct.item()/float(points.size()[0]))
+        mean_correct.append(correct.item() / float(points.size()[0]))
 
     accuracy = np.mean(mean_correct)
-    print('Total Accuracy: %f'%accuracy)
+    print('Total Accuracy: %f' % accuracy)
 
-    logger.info('Total Accuracy: %f'%accuracy)
+    logger.info('Total Accuracy: %f' % accuracy)
     logger.info('End of evaluation...')
+
 
 if __name__ == '__main__':
     args = parse_args()

@@ -14,19 +14,19 @@ from .tools import get_lidar_data, img_transform, normalize_img, gen_dx_bx
 
 class NuscData(torch.utils.data.Dataset):
     def __init__(self, nusc, is_train, data_aug_conf, grid_conf):
-        self.nusc = nusc
+        self.nusc = nusc  # load nuscenes 所有的数据文件
         self.is_train = is_train
         self.data_aug_conf = data_aug_conf
         self.grid_conf = grid_conf
-        self.scenes = self.get_scenes()
-        self.ixes = self.prepro()
+        self.scenes = self.get_scenes()  # 这里是按照训练集或者是验证集进行一个场景的划分
+        self.ixes = self.prepro()  # 按照时间戳排序之后的sample数据train：323， val：81
 
-        dx, bx, nx = gen_dx_bx(grid_conf['xbound'], grid_conf['ybound'], grid_conf['zbound'])
+        dx, bx, nx = gen_dx_bx(grid_conf['xbound'], grid_conf['ybound'], grid_conf['zbound']) # dx=[0.5, 0.5, 20], bx=[-49.75, -49.75, 0], nx=[200, 200, 1]
         self.dx, self.bx, self.nx = dx.numpy(), bx.numpy(), nx.numpy()
 
         self.fix_nuscenes_formatting()
 
-        print(self)
+        # print(self)
 
     def fix_nuscenes_formatting(self):
         """If nuscenes is stored with trainval/1 trainval/2 ... structure, adjust the file paths
@@ -59,10 +59,11 @@ class NuscData(torch.utils.data.Dataset):
                 di, fi, fname = find_name(f)
                 info[f'sweeps/{di}/{fi}'] = fname
             for rec in self.nusc.sample_data:
-                if rec['channel'] == 'LIDAR_TOP' or (rec['is_key_frame'] and rec['channel'] in self.data_aug_conf['cams']):
+                if rec['channel'] == 'LIDAR_TOP' or (
+                        rec['is_key_frame'] and rec['channel'] in self.data_aug_conf['cams']):
                     rec['filename'] = info[rec['filename']]
 
-    def get_scenes(self):
+    def get_scenes(self):  # 返回训练或者是验证的scene
         print("======version", self.nusc.version)
         # filter by scene split
         split = {
@@ -75,27 +76,27 @@ class NuscData(torch.utils.data.Dataset):
         return scenes
 
     def prepro(self):
-        print("==========", self.nusc.sample)
+        # print("==========", self.nusc.sample)
         samples = [samp for samp in self.nusc.sample]
 
-        print('sample is: ===========', samples)
+        # print('sample is: ===========', samples)
         # remove samples that aren't in this split
         samples = [samp for samp in samples if
-                   self.nusc.get('scene', samp['scene_token'])['name'] in self.scenes]
+                   self.nusc.get('scene', samp['scene_token'])['name'] in self.scenes]  # 从sample里面拿出有scene的sample
 
         # sort by scene, timestamp (only to make chronological viz easier)
-        samples.sort(key=lambda x: (x['scene_token'], x['timestamp']))
+        samples.sort(key=lambda x: (x['scene_token'], x['timestamp']))  # 对时间戳进行排序
 
         return samples
-    
+
     def sample_augmentation(self):
         H, W = self.data_aug_conf['H'], self.data_aug_conf['W']
         fH, fW = self.data_aug_conf['final_dim']
         if self.is_train:
-            resize = np.random.uniform(*self.data_aug_conf['resize_lim'])
-            resize_dims = (int(W*resize), int(H*resize))
+            resize = np.random.uniform(*self.data_aug_conf['resize_lim'])   # 随机取resize的一个范围
+            resize_dims = (int(W * resize), int(H * resize))
             newW, newH = resize_dims
-            crop_h = int((1 - np.random.uniform(*self.data_aug_conf['bot_pct_lim']))*newH) - fH
+            crop_h = int((1 - np.random.uniform(*self.data_aug_conf['bot_pct_lim'])) * newH) - fH
             crop_w = int(np.random.uniform(0, max(0, newW - fW)))
             crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
             flip = False
@@ -103,10 +104,10 @@ class NuscData(torch.utils.data.Dataset):
                 flip = True
             rotate = np.random.uniform(*self.data_aug_conf['rot_lim'])
         else:
-            resize = max(fH/H, fW/W)
-            resize_dims = (int(W*resize), int(H*resize))
+            resize = max(fH / H, fW / W)
+            resize_dims = (int(W * resize), int(H * resize))
             newW, newH = resize_dims
-            crop_h = int((1 - np.mean(self.data_aug_conf['bot_pct_lim']))*newH) - fH
+            crop_h = int((1 - np.mean(self.data_aug_conf['bot_pct_lim'])) * newH) - fH
             crop_w = int(max(0, newW - fW) / 2)
             crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
             flip = False
@@ -121,46 +122,46 @@ class NuscData(torch.utils.data.Dataset):
         post_rots = []
         post_trans = []
         for cam in cams:
-            samp = self.nusc.get('sample_data', rec['data'][cam])
+            samp = self.nusc.get('sample_data', rec['data'][cam])  # 拿到该摄像头的token对应的数据
             imgname = os.path.join(self.nusc.dataroot, samp['filename'])
             img = Image.open(imgname)
-            post_rot = torch.eye(2)
-            post_tran = torch.zeros(2)
-
+            post_rot = torch.eye(2)  # 二维的旋转数组
+            post_tran = torch.zeros(2)  # 二维的平移数组
+            # 获取该摄像头的标定数据
             sens = self.nusc.get('calibrated_sensor', samp['calibrated_sensor_token'])
-            intrin = torch.Tensor(sens['camera_intrinsic'])
-            rot = torch.Tensor(Quaternion(sens['rotation']).rotation_matrix)
-            tran = torch.Tensor(sens['translation'])
+            intrin = torch.Tensor(sens['camera_intrinsic'])  # 拿到相机的内参
+            rot = torch.Tensor(Quaternion(sens['rotation']).rotation_matrix)  # 传感器的旋转矩阵
+            tran = torch.Tensor(sens['translation'])  # 相加外参，偏移矩阵
 
-            # augmentation (resize, crop, horizontal flip, rotate)
-            resize, resize_dims, crop, flip, rotate = self.sample_augmentation()
+            # augmentation (resize, crop, horizontal flip, rotate) 只对图片进行翻转、平移
+            resize, resize_dims, crop, flip, rotate = self.sample_augmentation()  # 数据增强
             img, post_rot2, post_tran2 = img_transform(img, post_rot, post_tran,
-                                                     resize=resize,
-                                                     resize_dims=resize_dims,
-                                                     crop=crop,
-                                                     flip=flip,
-                                                     rotate=rotate,
-                                                     )
-            
-            # for convenience, make augmentation matrices 3x3
+                                                       resize=resize,
+                                                       resize_dims=resize_dims,
+                                                       crop=crop,
+                                                       flip=flip,
+                                                       rotate=rotate,
+                                                       )
+            # 返回偏移矩阵2x1和旋转矩阵2x2
+            # for convenience, make augmentation matrices 3x3，把上面的矩阵转换为3x3
             post_tran = torch.zeros(3)
             post_rot = torch.eye(3)
             post_tran[:2] = post_tran2
             post_rot[:2, :2] = post_rot2
-
+            # 图像进行归一化操作
             imgs.append(normalize_img(img))
-            intrins.append(intrin)
-            rots.append(rot)
-            trans.append(tran)
-            post_rots.append(post_rot)
-            post_trans.append(post_tran)
+            intrins.append(intrin)  # 内参标定数据保存到intrins
+            rots.append(rot)  # 相机旋转矩阵参数
+            trans.append(tran)  # 相机的平移参数
+            post_rots.append(post_rot)  # 相机图片后处理旋转参数
+            post_trans.append(post_tran)  # 相机图片后处理平移参数
 
         return (torch.stack(imgs), torch.stack(rots), torch.stack(trans),
                 torch.stack(intrins), torch.stack(post_rots), torch.stack(post_trans))
 
     def get_lidar_data(self, rec, nsweeps):
         pts = get_lidar_data(self.nusc, rec,
-                       nsweeps=nsweeps, min_distance=2.2)
+                             nsweeps=nsweeps, min_distance=2.2)
         return torch.Tensor(pts)[:3]  # x,y,z
 
     def get_binimg(self, rec):
@@ -175,15 +176,15 @@ class NuscData(torch.utils.data.Dataset):
             if not inst['category_name'].split('.')[0] == 'vehicle':
                 continue
             box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
-            box.translate(trans)
-            box.rotate(rot)
+            box.translate(trans)  # 将box的center的坐标从全局坐标系转换到自车坐标系下
+            box.rotate(rot)  # 将box的center坐标系从全局坐标系转换到自车坐标系下
 
-            pts = box.bottom_corners()[:2].T
+            pts = box.bottom_corners()[:2].T  # 三维边界框取底面的四个角的(x,y)值后转置, 4x2
             pts = np.round(
-                (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
-                ).astype(np.int32)
-            pts[:, [1, 0]] = pts[:, [0, 1]]
-            cv2.fillPoly(img, [pts], 1.0)
+                (pts - self.bx[:2] + self.dx[:2] / 2.) / self.dx[:2]
+            ).astype(np.int32)  # 将box的实际坐标对应到网格坐标，同时将坐标范围[-50,50]平移到[0,100]
+            pts[:, [1, 0]] = pts[:, [0, 1]]  # 把(x,y)的形式换成(y,x)的形式
+            cv2.fillPoly(img, [pts], 1.0)  # 在网格中画出box
 
         return torch.Tensor(img).unsqueeze(0)
 
@@ -206,49 +207,49 @@ class NuscData(torch.utils.data.Dataset):
 class VizData(NuscData):
     def __init__(self, *args, **kwargs):
         super(VizData, self).__init__(*args, **kwargs)
-    
+
     def __getitem__(self, index):
         rec = self.ixes[index]
-        
+
         cams = self.choose_cams()
         imgs, rots, trans, intrins, post_rots, post_trans = self.get_image_data(rec, cams)
         lidar_data = self.get_lidar_data(rec, nsweeps=3)
         binimg = self.get_binimg(rec)
-        
+
         return imgs, rots, trans, intrins, post_rots, post_trans, lidar_data, binimg
 
 
 class SegmentationData(NuscData):
     def __init__(self, *args, **kwargs):
         super(SegmentationData, self).__init__(*args, **kwargs)
-    
+
     def __getitem__(self, index):
         rec = self.ixes[index]
 
-        cams = self.choose_cams()
+        cams = self.choose_cams()   # 是从所有的摄像头里面随机选择5个摄像头返回
         imgs, rots, trans, intrins, post_rots, post_trans = self.get_image_data(rec, cams)
         binimg = self.get_binimg(rec)
-        
+
         return imgs, rots, trans, intrins, post_rots, post_trans, binimg
 
 
-def worker_rnd_init(x):
+def worker_rnd_init(x):  # 随机种子
     np.random.seed(13 + x)
 
 
 def compile_data(version, dataroot, data_aug_conf, grid_conf, bsz,
                  nworkers, parser_name):
     nusc = NuScenes(version='v1.0-{}'.format(version),
-                    dataroot=os.path.join(dataroot, version),
+                    # dataroot=os.path.join(dataroot, version),
+                    dataroot=dataroot,
                     verbose=False)
     parser = {
         'vizdata': VizData,
         'segmentationdata': SegmentationData,
     }[parser_name]
-    traindata = parser(nusc, is_train=True, data_aug_conf=data_aug_conf,
-                         grid_conf=grid_conf)
-    valdata = parser(nusc, is_train=False, data_aug_conf=data_aug_conf,
-                       grid_conf=grid_conf)
+
+    traindata = parser(nusc, is_train=True, data_aug_conf=data_aug_conf, grid_conf=grid_conf)
+    valdata = parser(nusc, is_train=False, data_aug_conf=data_aug_conf, grid_conf=grid_conf)
 
     trainloader = torch.utils.data.DataLoader(traindata, batch_size=bsz,
                                               shuffle=True,
