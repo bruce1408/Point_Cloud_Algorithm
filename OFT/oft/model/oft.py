@@ -69,7 +69,5 @@ class OFT(nn.Module):
         return ortho_feats
 
 
-
-
 def integral_image(features):
     return torch.cumsum(torch.cumsum(features, dim=-1), dim=-2)
