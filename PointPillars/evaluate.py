@@ -292,9 +292,10 @@ def main(args):
     LABEL2CLASSES = {v:k for k, v in CLASSES.items()}
 
     if not args.no_cuda:
+        print("use cuda to eval")
         model = PointPillars(nclasses=args.nclasses).cuda()
-        # model = nn.DataParallel(model)
-        # model = model.to(device)
+        model = nn.DataParallel(model)
+        model = model.to(device)
         model.load_state_dict(torch.load(args.ckpt))
     else:
         model = PointPillars(nclasses=args.nclasses)
@@ -379,9 +380,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Configuration Parameters')
-    parser.add_argument('--data_root', default='/data/kitti/detection',
+    parser.add_argument('--data_root', default='/data/cdd_data/kitti/detection',
                         help='your data root for kitti')
-    parser.add_argument('--ckpt', default='pretrained/epoch_160.pth', help='your checkpoint for kitti')
+    parser.add_argument('--ckpt',
+                        default='/home/cuidongdong/pointCloundAlgorithm/PointPillars/outputs/checkpoints/epoch_20.pth',
+                        help='your checkpoint for kitti')
     parser.add_argument('--saved_path', default='results', help='your saved path for predicted results')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--num_workers', type=int, default=4)

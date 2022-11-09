@@ -40,7 +40,7 @@ def create_data_info_pkl(data_root, data_type, prefix, label=True, db=False):
     ids_file = os.path.join(CUR, 'dataset', 'ImageSets', f'{data_type}.txt')
     with open(ids_file, 'r') as f:
         ids = [id.strip() for id in f.readlines()]
-
+    # ids存放train训练数据的点云编号
     split = 'training' if label else 'testing'
 
     kitti_infos_dict = {}
@@ -135,27 +135,27 @@ def main(args):
     data_root = args.data_root
     prefix = args.prefix
 
-    ## 1. train: create data infomation pkl file && create reduced point clouds 
-    ##           && create database(points in gt bbox) for data aumentation
+    # # 1. train: create data infomation pkl file && create reduced point clouds  && create database(points in gt
+    # bbox) for data aumentation
     kitti_train_infos_dict = create_data_info_pkl(data_root, 'train', prefix, db=True)
 
-    ## 2. val: create data infomation pkl file && create reduced point clouds
+    # 2. val: create data infomation pkl file && create reduced point clouds
     kitti_val_infos_dict = create_data_info_pkl(data_root, 'val', prefix)
 
-    ## 3. trainval: create data infomation pkl file
+    # 3. trainval: create data infomation pkl file
     kitti_trainval_infos_dict = {**kitti_train_infos_dict, **kitti_val_infos_dict}
     saved_path = os.path.join(data_root, f'{prefix}_infos_trainval.pkl')
     write_pickle(kitti_trainval_infos_dict, saved_path)
 
-    ## 4. test: create data infomation pkl file && create reduced point clouds
+    # 4. test: create data infomation pkl file && create reduced point clouds
     kitti_test_infos_dict = create_data_info_pkl(data_root, 'test', prefix, label=False)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Dataset infomation')
-    parser.add_argument('--data_root', default='/data/kitti/detection',
+    parser.add_argument('--data_root', default='/data/cdd_data/kitti/detection',
                         help='your data root for kitti')
-    parser.add_argument('--prefix', default='kitti',
+    parser.add_argument('--prefix', default='kitti_pointpillars',
                         help='the prefix name for the saved .pkl file')
     args = parser.parse_args()
 

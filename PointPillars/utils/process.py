@@ -7,7 +7,7 @@ import pdb
 from ops.iou3d_module import boxes_overlap_bev, boxes_iou_bev
 
 
-def setup_seed(seed=0, deterministic = True):
+def setup_seed(seed=0, deterministic=True):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -55,8 +55,8 @@ def points_camera2image(points, P2):
     P2: shape=(4, 4)
     return: shape=(N, 8, 2)
     '''
-    extended_points = np.pad(points, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=1.0) # (n, 8, 4)
-    image_points = extended_points @ P2.T # (N, 8, 4)
+    extended_points = np.pad(points, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=1.0)  # (n, 8, 4)
+    image_points = extended_points @ P2.T  # (N, 8, 4)
     image_points = image_points[:, :, :2] / image_points[:, :, 2:3]
     return image_points
 
@@ -70,23 +70,23 @@ def points_lidar2image(points, tr_velo_to_cam, r0_rect, P2):
     return: shape=(N, 8, 2)
     '''
     # points = points[:, :, [1, 2, 0]]
-    extended_points = np.pad(points, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=1.0) # (N, 8, 4)
+    extended_points = np.pad(points, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=1.0)  # (N, 8, 4)
     rt_mat = r0_rect @ tr_velo_to_cam
-    camera_points = extended_points @ rt_mat.T # (N, 8, 4)
+    camera_points = extended_points @ rt_mat.T  # (N, 8, 4)
     # camera_points = camera_points[:, :, [1, 2, 0, 3]]
-    image_points = camera_points @ P2.T # (N, 8, 4)
+    image_points = camera_points @ P2.T  # (N, 8, 4)
     image_points = image_points[:, :, :2] / image_points[:, :, 2:3]
 
     return image_points
 
 
 def points_camera2lidar(points, tr_velo_to_cam, r0_rect):
-    '''
-    points: shape=(N, 8, 3) 
+    """
+    points: shape=(N, 8, 3)
     tr_velo_to_cam: shape=(4, 4)
     r0_rect: shape=(4, 4)
     return: shape=(N, 8, 3)
-    '''
+    """
     extended_xyz = np.pad(points, ((0, 0), (0, 0), (0, 1)), 'constant', constant_values=1.0)
     rt_mat = np.linalg.inv(r0_rect @ tr_velo_to_cam)
     xyz = extended_xyz @ rt_mat.T
@@ -112,18 +112,18 @@ def bbox3d2bevcorners(bboxes):
 
     # 1.generate bbox corner coordinates, clockwise from minimal point
     bev_corners = np.array([[-0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0.5, -0.5]], dtype=np.float32)
-    bev_corners = bev_corners[None, ...] * dims[:, None, :] # (1, 4, 2) * (n, 1, 2) -> (n, 4, 2)
+    bev_corners = bev_corners[None, ...] * dims[:, None, :]  # (1, 4, 2) * (n, 1, 2) -> (n, 4, 2)
 
     # 2. rotate
     rot_sin, rot_cos = np.sin(angles), np.cos(angles)
     # in fact, -angle
-    rot_mat = np.array([[rot_cos, rot_sin], 
-                        [-rot_sin, rot_cos]]) # (2, 2, n)
-    rot_mat = np.transpose(rot_mat, (2, 1, 0)) # (N, 2, 2)
-    bev_corners = bev_corners @ rot_mat # (n, 4, 2)
+    rot_mat = np.array([[rot_cos, rot_sin],
+                        [-rot_sin, rot_cos]])  # (2, 2, n)
+    rot_mat = np.transpose(rot_mat, (2, 1, 0))  # (N, 2, 2)
+    bev_corners = bev_corners @ rot_mat  # (n, 4, 2)
 
     # 3. translate to centers
-    bev_corners += centers[:, None, :] 
+    bev_corners += centers[:, None, :]
     return bev_corners.astype(np.float32)
 
 
@@ -144,19 +144,19 @@ def bbox3d2corners(bboxes):
 
     # 1.generate bbox corner coordinates, clockwise from minimal point
     bboxes_corners = np.array([[-0.5, -0.5, 0], [-0.5, -0.5, 1.0], [-0.5, 0.5, 1.0], [-0.5, 0.5, 0.0],
-                               [0.5, -0.5, 0], [0.5, -0.5, 1.0], [0.5, 0.5, 1.0], [0.5, 0.5, 0.0]], 
-                               dtype=np.float32)
-    bboxes_corners = bboxes_corners[None, :, :] * dims[:, None, :] # (1, 8, 3) * (n, 1, 3) -> (n, 8, 3)
+                               [0.5, -0.5, 0], [0.5, -0.5, 1.0], [0.5, 0.5, 1.0], [0.5, 0.5, 0.0]],
+                              dtype=np.float32)
+    bboxes_corners = bboxes_corners[None, :, :] * dims[:, None, :]  # (1, 8, 3) * (n, 1, 3) -> (n, 8, 3)
 
     # 2. rotate around z axis
     rot_sin, rot_cos = np.sin(angles), np.cos(angles)
     # in fact, -angle
     rot_mat = np.array([[rot_cos, rot_sin, np.zeros_like(rot_cos)],
                         [-rot_sin, rot_cos, np.zeros_like(rot_cos)],
-                        [np.zeros_like(rot_cos), np.zeros_like(rot_cos), np.ones_like(rot_cos)]], 
-                        dtype=np.float32) # (3, 3, n)
-    rot_mat = np.transpose(rot_mat, (2, 1, 0)) # (n, 3, 3)
-    bboxes_corners = bboxes_corners @ rot_mat # (n, 8, 3)
+                        [np.zeros_like(rot_cos), np.zeros_like(rot_cos), np.ones_like(rot_cos)]],
+                       dtype=np.float32)  # (3, 3, n)
+    rot_mat = np.transpose(rot_mat, (2, 1, 0))  # (n, 3, 3)
+    bboxes_corners = bboxes_corners @ rot_mat  # (n, 8, 3)
 
     # 3. translate to centers
     bboxes_corners += centers[:, None, :]
@@ -181,19 +181,19 @@ def bbox3d2corners_camera(bboxes):
 
     # 1.generate bbox corner coordinates, clockwise from minimal point
     bboxes_corners = np.array([[0.5, 0.0, -0.5], [0.5, -1.0, -0.5], [-0.5, -1.0, -0.5], [-0.5, 0.0, -0.5],
-                               [0.5, 0.0, 0.5], [0.5, -1.0, 0.5], [-0.5, -1.0, 0.5], [-0.5, 0.0, 0.5]], 
-                               dtype=np.float32)
-    bboxes_corners = bboxes_corners[None, :, :] * dims[:, None, :] # (1, 8, 3) * (n, 1, 3) -> (n, 8, 3)
+                               [0.5, 0.0, 0.5], [0.5, -1.0, 0.5], [-0.5, -1.0, 0.5], [-0.5, 0.0, 0.5]],
+                              dtype=np.float32)
+    bboxes_corners = bboxes_corners[None, :, :] * dims[:, None, :]  # (1, 8, 3) * (n, 1, 3) -> (n, 8, 3)
 
     # 2. rotate around y axis
     rot_sin, rot_cos = np.sin(angles), np.cos(angles)
     # in fact, angle
     rot_mat = np.array([[rot_cos, np.zeros_like(rot_cos), rot_sin],
                         [np.zeros_like(rot_cos), np.ones_like(rot_cos), np.zeros_like(rot_cos)],
-                        [-rot_sin, np.zeros_like(rot_cos), rot_cos]], 
-                        dtype=np.float32) # (3, 3, n)
-    rot_mat = np.transpose(rot_mat, (2, 1, 0)) # (n, 3, 3)
-    bboxes_corners = bboxes_corners @ rot_mat # (n, 8, 3)
+                        [-rot_sin, np.zeros_like(rot_cos), rot_cos]],
+                       dtype=np.float32)  # (3, 3, n)
+    rot_mat = np.transpose(rot_mat, (2, 1, 0))  # (n, 3, 3)
+    bboxes_corners = bboxes_corners @ rot_mat  # (n, 8, 3)
 
     # 3. translate to centers
     bboxes_corners += centers[:, None, :]
@@ -201,23 +201,29 @@ def bbox3d2corners_camera(bboxes):
 
 
 def group_rectangle_vertexs(bboxes_corners):
-    '''
+    """
     bboxes_corners: shape=(n, 8, 3)
     return: shape=(n, 6, 4, 3)
-    '''
-    rec1 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 1], bboxes_corners[:, 3], bboxes_corners[:, 2]], axis=1) # (n, 4, 3)
-    rec2 = np.stack([bboxes_corners[:, 4], bboxes_corners[:, 7], bboxes_corners[:, 6], bboxes_corners[:, 5]], axis=1) # (n, 4, 3)
-    rec3 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 4], bboxes_corners[:, 5], bboxes_corners[:, 1]], axis=1) # (n, 4, 3)
-    rec4 = np.stack([bboxes_corners[:, 2], bboxes_corners[:, 6], bboxes_corners[:, 7], bboxes_corners[:, 3]], axis=1) # (n, 4, 3)
-    rec5 = np.stack([bboxes_corners[:, 1], bboxes_corners[:, 5], bboxes_corners[:, 6], bboxes_corners[:, 2]], axis=1) # (n, 4, 3)
-    rec6 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 3], bboxes_corners[:, 7], bboxes_corners[:, 4]], axis=1) # (n, 4, 3)
+    """
+    rec1 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 1], bboxes_corners[:, 3], bboxes_corners[:, 2]],
+                    axis=1)  # (n, 4, 3)
+    rec2 = np.stack([bboxes_corners[:, 4], bboxes_corners[:, 7], bboxes_corners[:, 6], bboxes_corners[:, 5]],
+                    axis=1)  # (n, 4, 3)
+    rec3 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 4], bboxes_corners[:, 5], bboxes_corners[:, 1]],
+                    axis=1)  # (n, 4, 3)
+    rec4 = np.stack([bboxes_corners[:, 2], bboxes_corners[:, 6], bboxes_corners[:, 7], bboxes_corners[:, 3]],
+                    axis=1)  # (n, 4, 3)
+    rec5 = np.stack([bboxes_corners[:, 1], bboxes_corners[:, 5], bboxes_corners[:, 6], bboxes_corners[:, 2]],
+                    axis=1)  # (n, 4, 3)
+    rec6 = np.stack([bboxes_corners[:, 0], bboxes_corners[:, 3], bboxes_corners[:, 7], bboxes_corners[:, 4]],
+                    axis=1)  # (n, 4, 3)
     group_rectangle_vertexs = np.stack([rec1, rec2, rec3, rec4, rec5, rec6], axis=1)
     return group_rectangle_vertexs
 
 
 @numba.jit(nopython=True)
 def bevcorner2alignedbbox(bev_corners):
-    '''
+    '''group_rectangle_vertexs
     bev_corners: shape=(N, 4, 2)
     return: shape=(N, 4)
     '''
@@ -262,12 +268,12 @@ def box_collision_test(boxes, qboxes, clockwise=True):
         for j in range(K):
             # calculate standup first
             iw = (
-                min(boxes_standup[i, 2], qboxes_standup[j, 2]) -
-                max(boxes_standup[i, 0], qboxes_standup[j, 0]))
+                    min(boxes_standup[i, 2], qboxes_standup[j, 2]) -
+                    max(boxes_standup[i, 0], qboxes_standup[j, 0]))
             if iw > 0:
                 ih = (
-                    min(boxes_standup[i, 3], qboxes_standup[j, 3]) -
-                    max(boxes_standup[i, 1], qboxes_standup[j, 1]))
+                        min(boxes_standup[i, 3], qboxes_standup[j, 3]) -
+                        max(boxes_standup[i, 1], qboxes_standup[j, 1]))
                 if ih > 0:
                     for k in range(4):
                         for box_l in range(4):
@@ -277,17 +283,17 @@ def box_collision_test(boxes, qboxes, clockwise=True):
                             D = lines_qboxes[j, box_l, 1]
                             acd = (D[1] - A[1]) * (C[0] -
                                                    A[0]) > (C[1] - A[1]) * (
-                                                       D[0] - A[0])
+                                          D[0] - A[0])
                             bcd = (D[1] - B[1]) * (C[0] -
                                                    B[0]) > (C[1] - B[1]) * (
-                                                       D[0] - B[0])
+                                          D[0] - B[0])
                             if acd != bcd:
                                 abc = (C[1] - A[1]) * (B[0] - A[0]) > (
-                                    B[1] - A[1]) * (
-                                        C[0] - A[0])
+                                        B[1] - A[1]) * (
+                                              C[0] - A[0])
                                 abd = (D[1] - A[1]) * (B[0] - A[0]) > (
-                                    B[1] - A[1]) * (
-                                        D[0] - A[0])
+                                        B[1] - A[1]) * (
+                                              D[0] - A[0])
                                 if abc != abd:
                                     ret[i, j] = True  # collision.
                                     break
@@ -303,9 +309,9 @@ def box_collision_test(boxes, qboxes, clockwise=True):
                                 if clockwise:
                                     vec = -vec
                                 cross = vec[1] * (
-                                    boxes[i, k, 0] - qboxes[j, box_l, 0])
+                                        boxes[i, k, 0] - qboxes[j, box_l, 0])
                                 cross -= vec[0] * (
-                                    boxes[i, k, 1] - qboxes[j, box_l, 1])
+                                        boxes[i, k, 1] - qboxes[j, box_l, 1])
                                 if cross >= 0:
                                     box_overlap_qbox = False
                                     break
@@ -320,9 +326,9 @@ def box_collision_test(boxes, qboxes, clockwise=True):
                                     if clockwise:
                                         vec = -vec
                                     cross = vec[1] * (
-                                        qboxes[j, k, 0] - boxes[i, box_l, 0])
+                                            qboxes[j, k, 0] - boxes[i, box_l, 0])
                                     cross -= vec[0] * (
-                                        qboxes[j, k, 1] - boxes[i, box_l, 1])
+                                            qboxes[j, k, 1] - boxes[i, box_l, 1])
                                     if cross >= 0:  #
                                         qbox_overlap_box = False
                                         break
@@ -336,14 +342,18 @@ def box_collision_test(boxes, qboxes, clockwise=True):
 
 
 def group_plane_equation(bbox_group_rectangle_vertexs):
-    '''
+    """
     bbox_group_rectangle_vertexs: shape=(n, 6, 4, 3)
     return: shape=(n, 6, 4)
-    '''
+    """
     # 1. generate vectors for a x b
-    vectors = bbox_group_rectangle_vertexs[:, :, :2] - bbox_group_rectangle_vertexs[:, :, 1:3]
-    normal_vectors = np.cross(vectors[:, :, 0], vectors[:, :, 1]) # (n, 6, 3)
-    normal_d = np.einsum('ijk,ijk->ij', bbox_group_rectangle_vertexs[:, :, 0], normal_vectors) # (n, 6)
+    vectors = bbox_group_rectangle_vertexs[:, :, :2] - bbox_group_rectangle_vertexs[:, :, 1:3]  # nx6x2x3
+
+    normal_vectors = np.cross(vectors[:, :, 0], vectors[:, :, 1])  # (n, 6, 3)
+    # 爱因斯坦标记法，主要是 a和b相乘，然后
+    normal_d = np.einsum('ijk,ijk->ij', bbox_group_rectangle_vertexs[:, :, 0], normal_vectors)  # (n, 6)
+
+    # 1x6x3 和 1x6x1 进行concat 之后就是 1x6x4
     plane_equation_params = np.concatenate([normal_vectors, -normal_d[:, :, None]], axis=-1)
     return plane_equation_params
 
@@ -377,19 +387,19 @@ def remove_pts_in_bboxes(points, bboxes, rm=True):
     return: shape=(N, n), bool
     '''
     # 1. get 6 groups of rectangle vertexs
-    bboxes_corners = bbox3d2corners(bboxes) # (n, 8, 3)
-    bbox_group_rectangle_vertexs = group_rectangle_vertexs(bboxes_corners) # (n, 6, 4, 3)
+    bboxes_corners = bbox3d2corners(bboxes)  # (n, 8, 3)
+    bbox_group_rectangle_vertexs = group_rectangle_vertexs(bboxes_corners)  # (n, 6, 4, 3)
 
     # 2. calculate plane equation: ax + by + cd + d = 0
     group_plane_equation_params = group_plane_equation(bbox_group_rectangle_vertexs)
 
     # 3. Judge each point inside or outside the bboxes
     # if point (x0, y0, z0) lies on the direction of normal vector(a, b, c), then ax0 + by0 + cz0 + d > 0.
-    masks = points_in_bboxes(points, group_plane_equation_params) # (N, n)
+    masks = points_in_bboxes(points, group_plane_equation_params)  # (N, n)
 
     if not rm:
         return masks
-        
+
     # 4. remove point insider the bboxes
     masks = np.any(masks, axis=-1)
 
@@ -412,11 +422,11 @@ def nearest_bev(bboxes):
     '''
     bboxes: (n, 7), (x, y, z, w, l, h, theta)
     return: (n, 4), (x1, y1, x2, y2)
-    '''    
+    '''
     bboxes_bev = copy.deepcopy(bboxes[:, [0, 1, 3, 4]])
     bboxes_angle = limit_period(bboxes[:, 6].cpu(), offset=0.5, period=np.pi).to(bboxes_bev)
     bboxes_bev = torch.where(torch.abs(bboxes_angle[:, None]) > np.pi / 4, bboxes_bev[:, [0, 1, 3, 2]], bboxes_bev)
-    
+
     bboxes_xy = bboxes_bev[:, :2]
     bboxes_wl = bboxes_bev[:, 2:]
     bboxes_bev_x1y1x2y2 = torch.cat([bboxes_xy - bboxes_wl / 2, bboxes_xy + bboxes_wl / 2], dim=-1)
@@ -429,20 +439,20 @@ def iou2d(bboxes1, bboxes2, metric=0):
     bboxes2: (m, 4), (x1, y1, x2, y2)
     return: (n, m)
     '''
-    bboxes_x1 = torch.maximum(bboxes1[:, 0][:, None], bboxes2[:, 0][None, :]) # (n, m)
-    bboxes_y1 = torch.maximum(bboxes1[:, 1][:, None], bboxes2[:, 1][None, :]) # (n, m)
+    bboxes_x1 = torch.maximum(bboxes1[:, 0][:, None], bboxes2[:, 0][None, :])  # (n, m)
+    bboxes_y1 = torch.maximum(bboxes1[:, 1][:, None], bboxes2[:, 1][None, :])  # (n, m)
     bboxes_x2 = torch.minimum(bboxes1[:, 2][:, None], bboxes2[:, 2][None, :])
     bboxes_y2 = torch.minimum(bboxes1[:, 3][:, None], bboxes2[:, 3][None, :])
 
     bboxes_w = torch.clamp(bboxes_x2 - bboxes_x1, min=0)
     bboxes_h = torch.clamp(bboxes_y2 - bboxes_y1, min=0)
 
-    iou_area = bboxes_w * bboxes_h # (n, m)
-    
+    iou_area = bboxes_w * bboxes_h  # (n, m)
+
     bboxes1_wh = bboxes1[:, 2:] - bboxes1[:, :2]
-    area1 = bboxes1_wh[:, 0] * bboxes1_wh[:, 1] # (n, )
+    area1 = bboxes1_wh[:, 0] * bboxes1_wh[:, 1]  # (n, )
     bboxes2_wh = bboxes2[:, 2:] - bboxes2[:, :2]
-    area2 = bboxes2_wh[:, 0] * bboxes2_wh[:, 1] # (m, )
+    area2 = bboxes2_wh[:, 0] * bboxes2_wh[:, 1]  # (m, )
     if metric == 0:
         iou = iou_area / (area1[:, None] + area2[None, :] - iou_area + 1e-8)
     elif metric == 1:
@@ -469,11 +479,11 @@ def iou3d(bboxes1, bboxes2):
     return: (n, m)
     '''
     # 1. height overlap
-    bboxes1_bottom, bboxes2_bottom = bboxes1[:, 2], bboxes2[:, 2] # (n, ), (m, )
-    bboxes1_top, bboxes2_top = bboxes1[:, 2] + bboxes1[:, 5], bboxes2[:, 2] + bboxes2[:, 5] # (n, ), (m, )
-    bboxes_bottom = torch.maximum(bboxes1_bottom[:, None], bboxes2_bottom[None, :]) # (n, m) 
+    bboxes1_bottom, bboxes2_bottom = bboxes1[:, 2], bboxes2[:, 2]  # (n, ), (m, )
+    bboxes1_top, bboxes2_top = bboxes1[:, 2] + bboxes1[:, 5], bboxes2[:, 2] + bboxes2[:, 5]  # (n, ), (m, )
+    bboxes_bottom = torch.maximum(bboxes1_bottom[:, None], bboxes2_bottom[None, :])  # (n, m)
     bboxes_top = torch.minimum(bboxes1_top[:, None], bboxes2_top[None, :])
-    height_overlap =  torch.clamp(bboxes_top - bboxes_bottom, min=0)
+    height_overlap = torch.clamp(bboxes_top - bboxes_bottom, min=0)
 
     # 2. bev overlap
     bboxes1_x1y1 = bboxes1[:, :2] - bboxes1[:, 3:5] / 2
@@ -482,19 +492,19 @@ def iou3d(bboxes1, bboxes2):
     bboxes2_x2y2 = bboxes2[:, :2] + bboxes2[:, 3:5] / 2
     bboxes1_bev = torch.cat([bboxes1_x1y1, bboxes1_x2y2, bboxes1[:, 6:]], dim=-1)
     bboxes2_bev = torch.cat([bboxes2_x1y1, bboxes2_x2y2, bboxes2[:, 6:]], dim=-1)
-    bev_overlap = boxes_overlap_bev(bboxes1_bev, bboxes2_bev) # (n, m)
+    bev_overlap = boxes_overlap_bev(bboxes1_bev, bboxes2_bev)  # (n, m)
 
     # 3. overlap and volume
     overlap = height_overlap * bev_overlap
     volume1 = bboxes1[:, 3] * bboxes1[:, 4] * bboxes1[:, 5]
     volume2 = bboxes2[:, 3] * bboxes2[:, 4] * bboxes2[:, 5]
-    volume = volume1[:, None] + volume2[None, :] # (n, m)
+    volume = volume1[:, None] + volume2[None, :]  # (n, m)
 
     # 4. iou
     iou = overlap / (volume - overlap + 1e-8)
 
     return iou
-    
+
 
 def iou3d_camera(bboxes1, bboxes2):
     '''
@@ -503,11 +513,11 @@ def iou3d_camera(bboxes1, bboxes2):
     return: (n, m)
     '''
     # 1. height overlap
-    bboxes1_bottom, bboxes2_bottom = bboxes1[:, 1] - bboxes1[:, 4], bboxes2[:, 1] -  bboxes2[:, 4] # (n, ), (m, )
-    bboxes1_top, bboxes2_top = bboxes1[:, 1], bboxes2[:, 1] # (n, ), (m, )
-    bboxes_bottom = torch.maximum(bboxes1_bottom[:, None], bboxes2_bottom[None, :]) # (n, m) 
+    bboxes1_bottom, bboxes2_bottom = bboxes1[:, 1] - bboxes1[:, 4], bboxes2[:, 1] - bboxes2[:, 4]  # (n, ), (m, )
+    bboxes1_top, bboxes2_top = bboxes1[:, 1], bboxes2[:, 1]  # (n, ), (m, )
+    bboxes_bottom = torch.maximum(bboxes1_bottom[:, None], bboxes2_bottom[None, :])  # (n, m)
     bboxes_top = torch.minimum(bboxes1_top[:, None], bboxes2_top[None, :])
-    height_overlap =  torch.clamp(bboxes_top - bboxes_bottom, min=0)
+    height_overlap = torch.clamp(bboxes_top - bboxes_bottom, min=0)
 
     # 2. bev overlap
     bboxes1_x1y1 = bboxes1[:, [0, 2]] - bboxes1[:, [3, 5]] / 2
@@ -516,13 +526,13 @@ def iou3d_camera(bboxes1, bboxes2):
     bboxes2_x2y2 = bboxes2[:, [0, 2]] + bboxes2[:, [3, 5]] / 2
     bboxes1_bev = torch.cat([bboxes1_x1y1, bboxes1_x2y2, bboxes1[:, 6:]], dim=-1)
     bboxes2_bev = torch.cat([bboxes2_x1y1, bboxes2_x2y2, bboxes2[:, 6:]], dim=-1)
-    bev_overlap = boxes_overlap_bev(bboxes1_bev, bboxes2_bev) # (n, m)
+    bev_overlap = boxes_overlap_bev(bboxes1_bev, bboxes2_bev)  # (n, m)
 
     # 3. overlap and volume
     overlap = height_overlap * bev_overlap
     volume1 = bboxes1[:, 3] * bboxes1[:, 4] * bboxes1[:, 5]
     volume2 = bboxes2[:, 3] * bboxes2[:, 4] * bboxes2[:, 5]
-    volume = volume1[:, None] + volume2[None, :] # (n, m)
+    volume = volume1[:, None] + volume2[None, :]  # (n, m)
 
     # 4. iou
     iou = overlap / (volume - overlap + 1e-8)
@@ -542,7 +552,7 @@ def iou_bev(bboxes1, bboxes2):
     bboxes2_x2y2 = bboxes2[:, :2] + bboxes2[:, 2:4] / 2
     bboxes1_bev = torch.cat([bboxes1_x1y1, bboxes1_x2y2, bboxes1[:, 4:]], dim=-1)
     bboxes2_bev = torch.cat([bboxes2_x1y1, bboxes2_x2y2, bboxes2[:, 4:]], dim=-1)
-    bev_overlap = boxes_iou_bev(bboxes1_bev, bboxes2_bev) # (n, m)
+    bev_overlap = boxes_iou_bev(bboxes1_bev, bboxes2_bev)  # (n, m)
 
     return bev_overlap
 
@@ -561,17 +571,17 @@ def keep_bbox_from_image_range(result, tr_velo_to_cam, r0_rect, P2, image_shape)
     lidar_bboxes = result['lidar_bboxes']
     labels = result['labels']
     scores = result['scores']
-    camera_bboxes = bbox_lidar2camera(lidar_bboxes, tr_velo_to_cam, r0_rect) # (n, 7)
-    bboxes_points = bbox3d2corners_camera(camera_bboxes) # (n, 8, 3)
-    image_points = points_camera2image(bboxes_points, P2) # (n, 8, 2)
-    image_x1y1 = np.min(image_points, axis=1) # (n, 2)
+    camera_bboxes = bbox_lidar2camera(lidar_bboxes, tr_velo_to_cam, r0_rect)  # (n, 7)
+    bboxes_points = bbox3d2corners_camera(camera_bboxes)  # (n, 8, 3)
+    image_points = points_camera2image(bboxes_points, P2)  # (n, 8, 2)
+    image_x1y1 = np.min(image_points, axis=1)  # (n, 2)
     image_x1y1 = np.maximum(image_x1y1, 0)
-    image_x2y2 = np.max(image_points, axis=1) # (n, 2)
+    image_x2y2 = np.max(image_points, axis=1)  # (n, 2)
     image_x2y2 = np.minimum(image_x2y2, [w, h])
     bboxes2d = np.concatenate([image_x1y1, image_x2y2], axis=-1)
 
     keep_flag = (image_x1y1[:, 0] < w) & (image_x1y1[:, 1] < h) & (image_x2y2[:, 0] > 0) & (image_x2y2[:, 1] > 0)
-    
+
     result = {
         'lidar_bboxes': lidar_bboxes[keep_flag],
         'labels': labels[keep_flag],
@@ -594,10 +604,10 @@ def keep_bbox_from_lidar_range(result, pcd_limit_range):
     if 'camera_bboxes' not in result:
         result['camera_bboxes'] = np.zeros_like(lidar_bboxes)
     bboxes2d, camera_bboxes = result['bboxes2d'], result['camera_bboxes']
-    flag1 = lidar_bboxes[:, :3] > pcd_limit_range[:3][None, :] # (n, 3)
-    flag2 = lidar_bboxes[:, :3] < pcd_limit_range[3:][None, :] # (n, 3)
+    flag1 = lidar_bboxes[:, :3] > pcd_limit_range[:3][None, :]  # (n, 3)
+    flag2 = lidar_bboxes[:, :3] < pcd_limit_range[3:][None, :]  # (n, 3)
     keep_flag = np.all(flag1, axis=-1) & np.all(flag2, axis=-1)
-    
+
     result = {
         'lidar_bboxes': lidar_bboxes[keep_flag],
         'labels': labels[keep_flag],
@@ -629,33 +639,33 @@ def points_in_bboxes_v2(points, r0_rect, tr_velo_to_cam, dimensions, location, r
     location, dimensions = location[:n_valid_bbox], dimensions[:n_valid_bbox]
     rotation_y, name = rotation_y[:n_valid_bbox], name[:n_valid_bbox]
     bboxes_camera = np.concatenate([location, dimensions, rotation_y[:, None]], axis=1)
-    bboxes_lidar = bbox_camera2lidar(bboxes_camera, tr_velo_to_cam, r0_rect)
-    bboxes_corners = bbox3d2corners(bboxes_lidar)
-    group_rectangle_vertexs_v = group_rectangle_vertexs(bboxes_corners)
-    frustum_surfaces = group_plane_equation(group_rectangle_vertexs_v)
-    indices = points_in_bboxes(points[:, :3], frustum_surfaces) # (N, n), N is points num, n is bboxes number
+    bboxes_lidar = bbox_camera2lidar(bboxes_camera, tr_velo_to_cam, r0_rect)  # 这里就是把有效框进行准换，从相机到雷达即可
+    bboxes_corners = bbox3d2corners(bboxes_lidar)  # 把nx7的3d框进行转换到8个顶点的目标框
+    group_rectangle_vertexs_v = group_rectangle_vertexs(bboxes_corners)  # 获取这8个顶点
+    frustum_surfaces = group_plane_equation(group_rectangle_vertexs_v)  # 获取目标框的8个平面方程
+    indices = points_in_bboxes(points[:, :3], frustum_surfaces)  # (N, n), N is points num, n is bboxes number
     return indices, n_total_bbox, n_valid_bbox, bboxes_lidar, name
 
 
 def get_points_num_in_bbox(points, r0_rect, tr_velo_to_cam, dimensions, location, rotation_y, name):
-    '''
-    points: shape=(N, 4) 
+    """
+    points: shape=(N, 4)
     tr_velo_to_cam: shape=(4, 4)
     r0_rect: shape=(4, 4)
-    dimensions: shape=(n, 3) 
-    location: shape=(n, 3) 
-    rotation_y: shape=(n, ) 
+    dimensions: shape=(n, 3)
+    location: shape=(n, 3)
+    rotation_y: shape=(n, )
     name: shape=(n, )
     return: shape=(n, )
-    '''
+    """
     indices, n_total_bbox, n_valid_bbox, bboxes_lidar, name = \
         points_in_bboxes_v2(
-            points=points, 
-            r0_rect=r0_rect, 
-            tr_velo_to_cam=tr_velo_to_cam, 
-            dimensions=dimensions, 
-            location=location, 
-            rotation_y=rotation_y, 
+            points=points,
+            r0_rect=r0_rect,
+            tr_velo_to_cam=tr_velo_to_cam,
+            dimensions=dimensions,
+            location=location,
+            rotation_y=rotation_y,
             name=name)
     points_num = np.sum(indices, axis=0)
     non_valid_points_num = [-1] * (n_total_bbox - n_valid_bbox)
@@ -678,15 +688,17 @@ def remove_outside_points(points, r0_rect, tr_velo_to_cam, P2, image_shape):
         np.ndarray, shape=[N, 3+dims]: Filtered points.
     """
     # 5x faster than remove_outside_points_v1(2ms vs 10ms)
-    C, R, T = projection_matrix_to_CRT_kitti(P2)
+    C, R, T = projection_matrix_to_CRT_kitti(P2)  # P2通过分块矩阵，然后进行qr分解，最后返回R,Q,T
     image_bbox = [0, 0, image_shape[1], image_shape[0]]
+
+    # 这里其实是构成了一个8x3的矩阵，这个矩阵用来形成视锥
     frustum = get_frustum(image_bbox, C)
     frustum -= T
     frustum = np.linalg.inv(R) @ frustum.T
-    frustum = points_camera2lidar(frustum.T[None, ...], tr_velo_to_cam, r0_rect) # (1, 8, 3)
-    group_rectangle_vertexs_v = group_rectangle_vertexs(frustum)
+    frustum = points_camera2lidar(frustum.T[None, ...], tr_velo_to_cam, r0_rect)  # (1, 8, 3)
+    group_rectangle_vertexs_v = group_rectangle_vertexs(frustum)  # [n x 6 x 4 x 3]
     frustum_surfaces = group_plane_equation(group_rectangle_vertexs_v)
-    indices = points_in_bboxes(points[:, :3], frustum_surfaces) # (N, 1)
+    indices = points_in_bboxes(points[:, :3], frustum_surfaces)  # (N, 1)
     points = points[indices.reshape([-1])]
     return points
 

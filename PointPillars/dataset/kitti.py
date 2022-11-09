@@ -36,17 +36,17 @@ class BaseSampler():
 class Kitti(Dataset):
 
     CLASSES = {
-        'Pedestrian': 0, 
-        'Cyclist': 1, 
+        'Pedestrian': 0,
+        'Cyclist': 1,
         'Car': 2
-        }
+    }
 
     def __init__(self, data_root, split, pts_prefix='velodyne_reduced'):
         assert split in ['train', 'val', 'trainval', 'test']
         self.data_root = data_root
         self.split = split
         self.pts_prefix = pts_prefix
-        self.data_infos = read_pickle(os.path.join(data_root, f'kitti_infos_{split}.pkl'))
+        self.data_infos = read_pickle(os.path.join(data_root, f'kitti_point_infos_{split}.pkl'))
         self.sorted_ids = list(self.data_infos.keys())
         db_infos = read_pickle(os.path.join(data_root, 'kitti_dbinfos_train.pkl'))
         db_infos = self.filter_db(db_infos)
@@ -58,20 +58,20 @@ class Kitti(Dataset):
             db_sampler=dict(
                 db_sampler=db_sampler,
                 sample_groups=dict(Car=15, Pedestrian=10, Cyclist=10)
-                ),
+            ),
             object_noise=dict(
                 num_try=100,
                 translation_std=[0.25, 0.25, 0.25],
                 rot_range=[-0.15707963267, 0.15707963267]
-                ),
+            ),
             random_flip_ratio=0.5,
             global_rot_scale_trans=dict(
                 rot_range=[-0.78539816, 0.78539816],
                 scale_ratio_range=[0.95, 1.05],
                 translation_std=[0, 0, 0]
-                ), 
+            ),
             point_range_filter=[0, -39.68, -3, 69.12, 39.68, 1],
-            object_range_filter=[0, -39.68, -3, 69.12, 39.68, 1]             
+            object_range_filter=[0, -39.68, -3, 69.12, 39.68, 1]
         )
 
     def remove_dont_care(self, annos_info):
@@ -90,19 +90,19 @@ class Kitti(Dataset):
         for cat in self.CLASSES:
             filter_thr = filter_thrs[cat]
             db_infos[cat] = [item for item in db_infos[cat] if item['num_points_in_gt'] >= filter_thr]
-        
+
         return db_infos
 
     def __getitem__(self, index):
         data_info = self.data_infos[self.sorted_ids[index]]
         image_info, calib_info, annos_info = \
             data_info['image'], data_info['calib'], data_info['annos']
-    
+
         # point cloud input
         velodyne_path = data_info['velodyne_path'].replace('velodyne', self.pts_prefix)
         pts_path = os.path.join(self.data_root, velodyne_path)
         pts = read_points(pts_path)
-        
+
         # calib input: for bbox coordinates transformation between Camera and Lidar.
         # because
         tr_velo_to_cam = calib_info['Tr_velo_to_cam'].astype(np.float32)
@@ -120,7 +120,7 @@ class Kitti(Dataset):
         data_dict = {
             'pts': pts,
             'gt_bboxes_3d': gt_bboxes_3d,
-            'gt_labels': np.array(gt_labels), 
+            'gt_labels': np.array(gt_labels),
             'gt_names': annos_name,
             'difficulty': annos_info['difficulty'],
             'image_info': image_info,
@@ -135,10 +135,16 @@ class Kitti(Dataset):
 
     def __len__(self):
         return len(self.data_infos)
- 
+
 
 if __name__ == '__main__':
-    
-    kitti_data = Kitti(data_root='/mnt/ssd1/lifa_rdata/det/kitti', 
+    kitti_data = Kitti(data_root='/data/cdd_data/kitti/detection',
                        split='train')
-    kitti_data.__getitem__(9)
+    print(kitti_data.__getitem__(9).__len__())
+    print(kitti_data.__getitem__(9)["pts"].shape)
+    print(kitti_data.__getitem__(9)["gt_bboxes_3d"].shape)
+    print(kitti_data.__getitem__(9)["gt_labels"].shape)
+    print(kitti_data.__getitem__(9)['gt_names'].shape)
+    print(kitti_data.__getitem__(9)['difficulty'].shape)
+    print(kitti_data.__getitem__(9)['image_info'])
+    print(kitti_data.__getitem__(9)['calib_info'])

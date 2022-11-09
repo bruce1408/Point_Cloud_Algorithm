@@ -1,17 +1,16 @@
 import argparse
 import os
-import torch
 import pdb
-
+import torch
 import torch.nn as nn
 import torch.distributed as dist
 import torch.utils.data.distributed
 from tqdm import tqdm
 os.environ['CUDA_VISIBLE_DEVICES'] = "4,5,6,7"
-from utils import setup_seed
-from dataset import Kitti, get_dataloader
-from model import PointPillars
 from loss import Loss
+from utils import setup_seed
+from model import PointPillars
+from dataset import Kitti, get_dataloader
 from torch.utils.tensorboard import SummaryWriter
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -40,6 +39,8 @@ def main(args):
                                     batch_size=args.batch_size, 
                                     num_workers=args.num_workers,
                                     shuffle=False)
+
+    print("train data size is {}, val data size is {}".format(train_dataloader.__len__(), val_dataloader.__len__()))
 
     if not args.no_cuda:
         pointpillars = PointPillars(nclasses=args.nclasses)
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     # torch.multiprocessing.set_sharing_strategy('file_system')
 
     parser = argparse.ArgumentParser(description='Configuration Parameters')
-    parser.add_argument('--data_root', default='/data/kitti/detection',
+    parser.add_argument('--data_root', default='/data/cdd_data/kitti/detection',
                         help='your data root for kitti')
     parser.add_argument('--saved_path', default='pillar_logs')
     parser.add_argument('--batch_size', type=int, default=16)
