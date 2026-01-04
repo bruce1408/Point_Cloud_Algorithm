@@ -1,9 +1,0 @@
-.git*
-LICENSE
-build
-checkpoints
-data
-pcdet.egg-info
-docs
-output
-*.md
